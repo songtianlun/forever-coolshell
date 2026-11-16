@@ -4,7 +4,7 @@ import argparse
 import re
 import sys
 from pathlib import Path
-from urllib.parse import urlsplit, urlunsplit
+from urllib.parse import quote, urlsplit, urlunsplit
 
 from bs4 import BeautifulSoup
 from markdownify import markdownify
@@ -27,7 +27,7 @@ def convert(source, known):
             continue
         match = re.fullmatch(r'/articles/(\d+)\.html', url.path)
         if attr == 'href' and match and match[1] in known:
-            node[attr] = urlunsplit(('', '', match[1] + '.md', url.query, url.fragment))
+            node[attr] = urlunsplit(('', '', quote(known[match[1]]), url.query, url.fragment))
         elif not url.netloc and url.path.startswith('/'):
             node[attr] = 'https://coolshell.cn' + node[attr]
     def language(pre):
@@ -35,6 +35,13 @@ def convert(source, known):
     text = markdownify(str(body), heading_style='ATX', bullets='-',
                        code_language_callback=language)
     return '# ' + title.get_text(' ', strip=True) + '\n\n' + text.strip() + '\n'
+
+
+def markdown_filename(text, uid):
+    """Prefix the sanitized first H1 with the article UID."""
+    heading = re.search(r'^#\s+(.+)$', text, re.MULTILINE)
+    name = ''.join(char for char in heading[1] if char.isalnum()) if heading else ''
+    return f'{uid}-{name}.md' if name else f'{uid}.md'
 
 
 def main():
@@ -47,10 +54,20 @@ def main():
     if not files:
         parser.error(f'没有找到 HTML 文章: {args.input}')
     args.output.mkdir(parents=True, exist_ok=True)
-    known = {p.stem for p in files}
+    known = {}
+    converted = {}
     written = skipped = failed = 0
     for source in files:
-        target = args.output / (source.stem + '.md')
+        try:
+            result = convert(source, {})
+            filename = markdown_filename(result, source.stem)
+            known[source.stem] = filename
+            converted[source] = result
+        except Exception as error:
+            failed += 1
+            print(f'{source}: {error}', file=sys.stderr)
+    for source in converted:
+        target = args.output / known[source.stem]
         if target.exists() and not args.overwrite:
             skipped += 1
             continue

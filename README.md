@@ -50,6 +50,6 @@ python3 -m venv .venv
 .venv/bin/python scripts/html_to_markdown.py
 ```
 
-默认输出到 `markdown/articles/<文章ID>.md`，不会修改原始 HTML。已有文件默认跳过，添加 `--overwrite` 可重新生成；也可用 `--input`、`--output` 指定目录。
+默认输出到 `markdown/articles/<文章ID>-<第一个一级标题去除空格和符号>.md`，不会修改原始 HTML。标题保留中文、字母和数字，前缀使用原 HTML 文件的文章 ID；标题清理后为空时使用 `<文章ID>.md`。已有文件默认跳过，添加 `--overwrite` 可重新生成；也可用 `--input`、`--output` 指定目录。
 
 站内文章链接会改为同目录的 `.md` 链接；图片等资源使用原站绝对地址，需联网访问（脚本不下载资源）。
